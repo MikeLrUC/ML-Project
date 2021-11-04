@@ -94,9 +94,11 @@ if nargin >= 1 && ischar(varargin{1}),
     case 'Plot', Plot;
   end
 else
-   
-  if nargin >=1, options = c2s(varargin{1}); else options=[]; end
-  
+  options = [];
+  options.arch = varargin{1}{1};
+  options.transferFcn = varargin{2}{1};
+  %if nargin >=1, options = c2s(varargin{1}); else options=[]; end
+
   % function called when middle button is pressed
   if ~isfield( options, 'fun'), options.fun = 'ocr_fun'; end
   
@@ -186,7 +188,7 @@ function Dn(varargin)
  % We want to save only P, and for that we must specify that we only want
  % to save P; for that we must write
  
-              %save P.mat P
+              save P.mat P
            
  % and a mat file called P is created having inside the matrix P.Then we can
  % load P, and rename the matrix P, by clicking on P with the right mouse
@@ -206,7 +208,7 @@ function Dn(varargin)
  % neste momento estão na directoria de trabalho a matriz P.mat e o vector ind.mat.
  % não usar este ficheiro para  a classificação; por isso comentar sempre a linha seguinte 
  
-             feval(options.fun,data);
+             feval(options.fun, data, options.arch, options.transferFcn);
              
  % feval vai calcular a função options.fun, que por defeito é a ocr_fun;
  % ocr_fun chama a função myclassify que deve ser escrita pelo utilizador. 
