@@ -1,26 +1,24 @@
 function [arg] = myclassify(P, filled_indexes, architecture, transfer_function)
     % Setting Seed    
-    rng(0);
+    rng(80);
     
     % Setting up Input (P)
-    len = ceil(length(P)/10);
     P = P(:,filled_indexes);
     
     % Loading Prototype Inputs
     dataset = load('P_500.mat');
-    dataset = dataset.P(:, filled_indexes);
+    dataset = dataset.P_500;
+    Q = length(dataset);
     
     % Setting up Classifier Target
-    identity = repmat(eye(10), 1, len);
-    identity = identity(:, filled_indexes);
-    
+    identity = repmat(eye(10), 1, Q/10);
+
     if (architecture == "Filter + Classifier (1 Layer)")
         % -- Loading -- %
         
         % Loading Filter Target (T)
         T = load('PerfectArial.mat');
-        T = repmat(T.Perfect, 1, len);
-        T = T(:, filled_indexes);
+        T = repmat(T.Perfect, 1, Q/10);
         
         % -- Filter: Associative Memory -- %
       
@@ -33,15 +31,15 @@ function [arg] = myclassify(P, filled_indexes, architecture, transfer_function)
     end
     
     if (architecture == "Classifier (2 Layers)")
-        hidden_n = 100;
+        hidden_n = 50;
         % -- Classifier 2 Layers -- %
         
-        % Configuration: Shallow Network w/ 1 Input, 2 Layers, With bias,
+        % Configuration: Network w/ 1 Input, 2 Layers, With bias,
         %   - Input connects to only Layer
         %   - No Layer connects to other Layer
         %   - Only Layer connects to Output
         
-        net = network(1,2,[1;1],[1;0], [0 0; 1 0],[0,1]);
+        net = network(1,2,[1;1],[1;0],[0 0; 1 0],[0,1]);
         
         % Setting up: Input size and Layer Nodes
         net.inputs{1}.size = 256;
@@ -49,13 +47,13 @@ function [arg] = myclassify(P, filled_indexes, architecture, transfer_function)
         net.layers{2}.size = 10;
         
         % Setting up: Random Weights and Biases
-        random_weights = rand(hidden_n, 256);
+        random_weights = 0.1 * rand(hidden_n, 256); % Porque é que se tirar o 0.1 isto n funciona bem
         random_biases = rand(hidden_n,1);
 
         net.IW{1,1} = random_weights;
         net.b{1,1} = random_biases;
         
-        random_weights = rand(10, hidden_n);
+        random_weights = 0.1 * rand(10, hidden_n); % Porque é que se tirar o 0.1 isto n funciona bem
         random_biases = rand(10,1);
 
         net.LW{2,1} = random_weights;
@@ -112,7 +110,6 @@ function [arg] = myclassify(P, filled_indexes, architecture, transfer_function)
     end
     
     % Extra Network Training Parameters
-    net.performParam.lr = 30;
     net.trainParam.epochs = 20000;
     net.performFcn = 'mse';
 
