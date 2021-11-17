@@ -70,9 +70,10 @@ function [arg] = myclassify(P, filled_indexes, architecture, transfer_function)
         
         % Setting up: Transfer Function (Activation Function) of last Layer
         net.layers{2}.transferFcn = "hardlim";
-        net.layerWeights{2,1}.learnFcn = 'learnp';
-        net.biases{2}.learnFcn = 'learnp';
-        
+        %net.layerWeights{2,1}.learnFcn = 'learnp';
+        %net.biases{2}.learnFcn = 'learnp';
+        net.layerWeights{1,1}.learnFcn = 'learnp';
+        net.biases{1}.learnFcn = 'learnp';
         % Setting up: Training Method
         net.trainFcn = "trainc";
         
