@@ -1,18 +1,15 @@
-function [arg] = myclassify(P, filled_indexes, architecture, transfer_function)
+function [net] = nn_train(fileN, architecture, transfer_function, seed, plot)
     % Setting Seed    
-    rng(80);
-    
-    % Setting up Input (P)
-    P = P(:,filled_indexes);
+    rng(seed);
     
     % Loading Prototype Inputs
-    dataset = load('P_500.mat');
-    dataset = dataset.P_500;
-    Q = length(dataset);
+    dataset = load("P_" + fileN + ".mat");
+    dataset = dataset.P;
+    Q = size(dataset, 2);
     
     % Setting up Classifier Target
     identity = repmat(eye(10), 1, Q/10);
-
+    
     if (architecture == "Filter + Classifier (1 Layer)")
         % -- Loading -- %
         
@@ -26,19 +23,13 @@ function [arg] = myclassify(P, filled_indexes, architecture, transfer_function)
         W = T * pinv(dataset);
 
         % Filter Output 
-        P = W * P;             % Filtered P
         dataset = W * dataset; % Filtered dataset
     end
     
     if (architecture == "Classifier (2 Layers)")
         hidden_n = 50;
-        % -- Classifier 2 Layers -- %
         
-        % Configuration: Network w/ 1 Input, 2 Layers, With bias,
-        %   - Input connects to only Layer
-        %   - No Layer connects to other Layer
-        %   - Only Layer connects to Output
-        
+        % Neural Network
         net = network(1,2,[1;1],[1;0],[0 0; 1 0],[0,1]);
         
         % Setting up: Input size and Layer Nodes
@@ -46,7 +37,7 @@ function [arg] = myclassify(P, filled_indexes, architecture, transfer_function)
         net.layers{1}.size = hidden_n; % Hidden Layer
         net.layers{2}.size = 10;
         
-        % Setting up: Random Weights and Biases
+        % Setting up: Random Weights and Biases of First Layer
         random_weights = 0.1 * rand(hidden_n, 256);
         random_biases = 0.1 * rand(hidden_n,1);
 
@@ -62,30 +53,26 @@ function [arg] = myclassify(P, filled_indexes, architecture, transfer_function)
             net.layers{1}.transferFcn = "hardlim";
         end
         
+        % Setting up: Random Weights and Biases of Last Layer
         random_weights = 0.1 * rand(10, hidden_n);
         random_biases = 0.1 * rand(10,1);
 
         net.LW{2,1} = random_weights;
         net.b{2,1} = random_biases;
         
-        % Setting up: Transfer Function (Activation Function) of last Layer
+        % Setting up: Transfer Function (Activation Function) of Last Layer
         net.layers{2}.transferFcn = "hardlim";
-        %net.layerWeights{2,1}.learnFcn = 'learnp';
-        %net.biases{2}.learnFcn = 'learnp';
-        net.layerWeights{1,1}.learnFcn = 'learnp';
-        net.biases{1}.learnFcn = 'learnp';
+        net.layerWeights{2,1}.learnFcn = 'learnp';
+        net.biases{2}.learnFcn = 'learnp';
+        
         % Setting up: Training Method
         net.trainFcn = "trainc";
         
         net.trainParam.epochs = 1000;
-    else
-        % -- Classifier 1 Layer -- %
-
-        % Configuration: Shallow Network w/ 1 Input, 1 Layer, With bias,
-        %   - Input connects to First Layer (hidden)
-        %   - 1st Layer connects to 2nd Layer
-        %   - 2nd Layer connects to Output
         
+    else % -- Classifier 1 Layer -- %
+        
+        % Network
         net = network(1, 1, 1, 1, 0, 1);
     
         % Setting up: Input size and Layer Nodes
@@ -100,8 +87,9 @@ function [arg] = myclassify(P, filled_indexes, architecture, transfer_function)
         net.IW{1,1} = random_weights;
         net.b{1,1} = random_biases;
         
-        % Setting up: Training Method
+        % Setting up: Training Method & Epochs
         net.trainFcn = "traingd";
+        net.trainParam.epochs = 20000;
         
         if (transfer_function == "Linear")
             net.layers{1}.transferFcn = "purelin";
@@ -109,12 +97,14 @@ function [arg] = myclassify(P, filled_indexes, architecture, transfer_function)
             net.layers{1}.transferFcn = "logsig";
         elseif (transfer_function == "Hardlim")
             net.layers{1}.transferFcn = "hardlim";
+            
             net.inputWeights{1,1}.learnFcn = 'learnp';
             net.biases{1}.learnFcn = 'learnp';
             net.trainFcn = "trainc";
+            net.trainParam.epochs = 1000;
         end
         
-        net.trainParam.epochs = 20000;
+        
     end
 
     % Setting up: Dataset Split (train, validation, test)
@@ -122,18 +112,25 @@ function [arg] = myclassify(P, filled_indexes, architecture, transfer_function)
     
     % Extra Network Training Parameters
     net.performFcn = 'mse';
-
+    
     % Training Neural Network (Input is Weights * dataset and Target is identity)
     [net, tresults] = train(net, dataset, identity);
     
     % Displaying Training Results
-    figure(); plotperform(tresults)
- 
+    if plot == true
+        figure(); plotperform(tresults)
+    end
     
-    % Classifing P2
-    Y = net(P);
-    disp(Y)
-    [~, arg] = max(Y);
-    disp(arg)
+        
+    % Saving networks
+    if (architecture == "Filter + Classifier (1 Layer)")
+        name = "FC1_" + transfer_function + "_" + fileN + "_" + seed;
+    elseif (architecture == "Classifier (1 Layer)")
+        name = "C1_" + transfer_function + "_" + fileN + "_" + seed;
+    elseif (architecture == "Classifier (2 Layers)")
+        name = "C2_" + transfer_function + "_" + fileN + "_" + seed;
+    end
+    save(name, "net");
+    
     return
 end
