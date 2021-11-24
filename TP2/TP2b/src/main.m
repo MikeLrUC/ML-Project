@@ -1,4 +1,3 @@
-
 function main(varargin)
     for i = 1:nargin
       file = varargin{i};
@@ -63,4 +62,5 @@ function  [P, T] = load_data(file)
     % Return Data
     P = S.FeatVectSel';  % Feature Matrix (features by row)
     T = C(:, L);         % Target (classified) Matrix
+
 end
