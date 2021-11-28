@@ -1,4 +1,4 @@
-function mlnn(X, T, varargin)
+function [N, R] = mlnn(X, T, varargin)
     % Default Values
     network = "feedforwardnet";
     hidden = [10];
@@ -14,7 +14,7 @@ function mlnn(X, T, varargin)
                 hidden = varargin{2};
             case "fn"
                 fn = varargin{2};
-            case "delays"
+            case "delay"
                 delay = varargin{2};
             otherwise
                 error(["Unknown Option: " varargin{1}]);
@@ -25,17 +25,18 @@ function mlnn(X, T, varargin)
     X = num2cell(X, 1);
     T = num2cell(T, 1);
     if network == "layrecnet"
-        net = layrecnet(delay, hidden, fn);
-        [Xs,Xi,Ai,Ts] = preparets(net,X,T);
-        net = train(net,Xs,Ts,Xi,Ai);
-        Y = net(Xs,Xi,Ai);
-        perf = perform(net,Y,Ts);
-        disp(perf);
+       net = layrecnet(delay, hidden, fn);
+       [Xs,Xi,Ai,Ts] = preparets(net,X,T);
+       [N, R] = train(net,Xs,Ts,Xi,Ai);
+           
+       nn = "../data/" + network +"_" + string(hidden) + "_" + delay + "_" + fn;
+       save(nn, ".mat");
     else
        net = feedforwardnet(hidden, fn);
-       net = train(net, X, T);
-       Y = net(X);
-       perf = perform(net, Y, T);
-       disp(perf);
+       disp(net);
+       [N, R] = train(net, X, T);  
+       
+       nn = "../data/" + network +"_" + string(hidden) + "_" + fn;
+       save(nn, ".mat");
     end
 end

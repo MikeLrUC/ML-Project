@@ -4,7 +4,24 @@ function main(varargin)
       file = varargin{i};
       [P, T] = load_data(file);
       [X_train, X_test, y_train, y_test] = train_test_split(P, T);
-      
+      mlnn_train(X_train, X_test);
+    end
+end
+
+
+function mlnn_train(X, T)
+    for n = ["feedforwardnet", "layrecnet"]
+        for f = ["trainlm", "traingd", "traincgb" ]
+            for h = [10, 20]
+                if n == "layrecnet"
+                    for d = [1:2, 1:4, 1:7, 1:15]
+                        mlnn(X, T, "network", n, "fn", f,"hidden", h, "delay", d);
+                    end              
+                else
+                    mlnn(X, T, "network", n, "fn", f, "hidden", h);
+                end 
+             end       
+         end
     end
 end
 
@@ -14,7 +31,7 @@ function [X_train, X_test, y_train, y_test] = train_test_split(P, T, varargin)
     if nargin == 1
        split = varargin{1};
     else
-       split = 0.7;
+       split = 0.7; % (70% training / 30% testing)
     end
     s = floor(length(P) * split);
 
@@ -22,7 +39,7 @@ function [X_train, X_test, y_train, y_test] = train_test_split(P, T, varargin)
     X_train = P(:, 1:s);
     y_train = T(:, 1:s);
   
-    % "sub-sampling" pos/inter - ictal periods (normalize dataset)
+    % "sub-sampling" (pos/inter)-ictal periods (normalize dataset)
     A = find(y_train(1, :) == 1); % pos-ictal + inter-ictal
     B = find(y_train(2, :) == 1 | y_train(3, :) == 1); % pre-ictal + ictal
 
@@ -55,9 +72,10 @@ function  [P, T] = load_data(file)
     
     % Set Labels
     L(L == 0) = 1;
-    for i = 
-    L(:, max(l - 901, 1):max(l - 1, 1)) = 2;
-    L(:, l:h) = 3;
+    for i = 1:length(l)
+        L(:, max(l(i) - 901, 1):max(l(i) - 1, 1)) = 2;
+        L(:, l(i):h(i)) = 3;
+    end
     
     % Return Data
     P = S.FeatVectSel';  % Feature Matrix (features by row)

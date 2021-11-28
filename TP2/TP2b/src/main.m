@@ -4,7 +4,23 @@ function main(varargin)
       file = varargin{i};
       [P, T] = load_data(file);
       [X_train, X_test, y_train, y_test] = train_test_split(P, T);
-      mlnn(X_train, y_train, "network", "feedforwardnet")
+      mlnn_train(X_train, y_train);
+    end
+end
+
+function mlnn_train(X, T)
+    for n = ["feedforwardnet", "layrecnet"]
+        for f = ["trainlm", "traingd", "traingdx" ]
+            for h = [10, 20]
+                if n == "layrecnet"
+                    for d = [1:2, 1:4, 1:7, 1:15]
+                        mlnn(X, T, "network", n, "fn", f,"hidden", h, "delay", d);
+                    end              
+                else
+                    mlnn(X, T, "network", n, "fn", f, "hidden", h);
+                end 
+             end       
+         end
     end
 end
 
