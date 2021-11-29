@@ -1,36 +1,77 @@
-function main(varargin)
-    for i = 1:nargin
-      file = varargin{i};
+function main(datasets)
+    
+    % Training Parameters (Hardcoded for now)
+    hidden = [10];
+    functions = ["traingd"];
+    delays = [2];
+    encoding = [];
+    network = ["feedforwardnet", "layrecnet"];
+
+    for file = datasets
+      % Load Dataset
       [P, T] = load_data(file);
-      [X_train, X_test, y_train, y_test] = train_test_split(P, T);
-      mlnn_train(X_train, y_train);
+
+      % Split Dataset
+      [X_train, X_test, y_train, y_test] = train_test_split(P, T, "encoding", encoding);
+       
+      % TODO: parametrize.
+      % Train Multi Layer Neural Networks
+      MLNN = mlnn(X_train, y_train, network, functions, hidden, delays);
+
+      % Gather Relevant Information
+      evaluate(MLNN, X_test, y_test);
     end
 end
 
-function mlnn_train(X, T)
-    for n = ["feedforwardnet", "layrecnet"]
-        for f = ["trainlm", "traingd", "traingdx" ]
-            for h = [10, 20]
-                if n == "layrecnet"
-                    for d = [1:2, 1:4, 1:7, 1:15]
-                        mlnn(X, T, "network", n, "fn", f,"hidden", h, "delay", d);
-                    end              
-                else
-                    mlnn(X, T, "network", n, "fn", f, "hidden", h);
-                end 
-             end       
-         end
-    end
-end
 
+function evaluate(N, X, T)
+
+    for i = 1:length(N)
+        % Load network (from file path/cell array)
+        if iscell(N(i))
+            net = N{i, 1};
+            name = N{i, 2};
+        else
+            net = load(N(i), "net");
+            name = N(i);
+        end
+    
+        % Test the network
+        disp("Testing Network: "+ name);
+        Y = net(X);
+    
+        % Evaluate Acording to performance metrics
+        p = perform(net, Y, T);
+        disp(" => Performance (MSE) :" + p);
+
+        disp(" => Confusion Matrix")
+        [missed, cm, ~, ~] = confusion(T, Y);
+        disp(cm);
+        
+        acc = 1 - missed;
+        disp(" => Accuracy: " + acc);
+    end       
+end
 
 function [X_train, X_test, y_train, y_test] = train_test_split(P, T, varargin)
-    % Default value
-    if nargin == 1
-       split = varargin{1};
-    else
-       split = 0.7; % (70% training / 30% testing)
+    % Default Parameters
+    split = 0.7; % (70% training / 30% testing)
+    encoding = []; % no encoding
+    
+    % Load Optional Arguments
+    while ~isempty(varargin)
+        switch(lower(varargin{1}))
+            case 'encoding'
+                encoding = varargin{2};
+            case 'split'
+                split = varargin{2};
+            otherwise
+                error(['Unexpected Argument: ' varargin{1}]);
+        end
+        varargin(1:2) = [];
     end
+
+    % Split Index
     s = floor(length(P) * split);
 
     % Setup Training Data
@@ -48,6 +89,12 @@ function [X_train, X_test, y_train, y_test] = train_test_split(P, T, varargin)
     % Setup Test Data
     X_test = P(:, s+1:end);
     y_test = T(:, s+1:end);
+    
+    % Use Autoencoder
+    [X_train, components] = stacked_encoder(X_train, encoding);
+    for encoder = components
+        X_test = encode(encoder{1}, X_test);
+    end   
 end
 
 
@@ -78,5 +125,4 @@ function  [P, T] = load_data(file)
     % Return Data
     P = S.FeatVectSel';  % Feature Matrix (features by row)
     T = C(:, L);         % Target (classified) Matrix
-
 end

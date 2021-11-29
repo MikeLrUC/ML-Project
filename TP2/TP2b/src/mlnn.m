@@ -1,42 +1,92 @@
-function [N, R] = mlnn(X, T, varargin)
-    % Default Values
-    network = "feedforwardnet";
-    hidden = [10];
-    delay = 1:2;
-    fn = "trainlm";
+function [MLNN] = mlnn(X, T, networks, functions, layers, delays, varargin)
+    % Default Parameters
+    seeds = 1;
+    store = true;
     
-    % Optional Arguments
+    % Load Optional Arguments
     while ~isempty(varargin)
-        switch lower(varargin{1})
-            case "network"
-                network = varargin{2};
-            case "hidden"
-                hidden = varargin{2};
-            case "fn"
-                fn = varargin{2};
-            case "delay"
-                delay = varargin{2};
+        switch(lower(varargin{1}))
+            case 'seeds'
+                seeds = varargin{2};
+            case 'save'
+                store = varargin{2};
             otherwise
-                error(["Unknown Option: " varargin{1}]);
+                error(['Unexpected Argument: ' varargin{1}]);
         end
         varargin(1:2) = [];
     end
 
-    X = num2cell(X, 1);
-    T = num2cell(T, 1);
-    if network == "layrecnet"
-       net = layrecnet(delay, hidden, fn);
-       [Xs,Xi,Ai,Ts] = preparets(net,X,T);
-       [N, R] = train(net,Xs,Ts,Xi,Ai);
-           
-       nn = "../data/" + network +"_" + string(hidden) + "_" + delay + "_" + fn;
-       save(nn, ".mat");
-    else
-       net = feedforwardnet(hidden, fn);
-       disp(net);
-       [N, R] = train(net, X, T);  
-       
-       nn = "../data/" + network +"_" + string(hidden) + "_" + fn;
-       save(nn, ".mat");
+    % Prelocate space for the networks
+    MLNN = cell(length(functions) * length(layers) * length(delays) * seeds, 2);
+
+    % Train Networks
+    i = 1;
+    for s = 1:seeds    
+        for n = networks
+            for f = functions
+                for h = layers
+                    if n == "layrecnet"
+                       for d = delays
+                         [net, name] = mlnn_train(X, T, n, f, h, d, s, store); 
+                         MLNN(i, :) = {net, name};
+                         i = i + 1;
+                       end
+                    else
+                         [net, name] = mlnn_train(X, T, n, f, h, [], s, store); 
+                         MLNN(i, :) = {net, name};
+                         i = i + 1;
+                    end  
+                end 
+            end
+        end    
     end
+end
+
+
+function [N, ID] = mlnn_train(X, T, network, fn, hidden, delay, seed, store)
+    % Set Seed
+    rng(seed);
+
+    % Convert features to cell arrays
+    X_train = num2cell(X, 1);
+    y_train = num2cell(T, 1);
+
+    % Network Name/ID
+    if network == "layrecnet"
+        ID = "LRN_" + hidden + "_" + fn + "_" + delay + "_" + seed;
+    else
+        ID = "FFN_" + hidden + "_" + fn + "_" + seed;
+    end
+
+    % Debug
+    disp("Training: " + ID);
+    disp(" => Network: " + network);
+    disp(" => TrainFn: " + fn);
+    disp(" => HiddenSize: "+ hidden);
+
+    if network == "layrecnet"
+       disp(" => Delay: "+ delay);
+
+       % Train Neural Network
+       net = layrecnet(1:delay, hidden, fn);
+       [Xs, Xi, Ai, Ts] = preparets(net, X_train, y_train);
+       N = train(net, Xs, Ts, Xi, Ai); 
+    else
+       % Train Neural Network
+       net = feedforwardnet(hidden, fn);
+       N = train(net, X_train, y_train);  
+    end
+
+    % Save Trained Neural Network
+    if store == true
+       % Create a directory for network storage
+       root = fullfile("..", "data", "networks", network);
+       if ~exist(root, 'dir')
+           mkdir(root);
+       end
+
+       % Save Network
+       save(fullfile(root, ID), "net");
+    end
+
 end
