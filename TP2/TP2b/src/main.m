@@ -1,135 +1,137 @@
-% Test Networks: 
-%   main(datasets, "test", ["netfile1", "netfile2"]);
-%
-% Train(+Test) (MLNN Network): 
-%   main(datasets, 
-%       "network", layrecnet",
-%       "cnn", false,
-%       "hidden", 10,
-%       "fn", "traingd",
-%       "delay", 2,
-%       "encoding", [20],
-%       "save", false)
-%
-% Train(+save) (MLNN Network): 
-%   main(datasets, 
-%       "network", "feedforwardnet",
-%       "cnn", false,
-%       "hidden", 10,
-%       "fn", "traingd")
+function [SP_train, SS_train, A_train, MSE_train, SP_test, SS_test, A_test, MSE_test] = main(patient, network, encoding, train, class)
 
-function main(datasets, varargin)
-    % Default Arguments
-    split = 0.7;
-    save = true;
-    seeds = 1;
-    encoding = [];
-    test = [];
-    delays = [];
+  % Default Parameters
+  split = 0.7;          % (70% training / 30% testing)
+  seed = 42;            % seed for training/testing network (easter-egg)
+  fn = "traingd";       % Network Training Function;
+  delay = 2;            % Delay (for layrecnet)
+  hidden = 10;          % Hidden Layer Size
 
-    while ~isempty(varargin)
-        switch(lower(varargin{1}))
-            case "hidden"
-                hidden = varargin{2};
-            case "fn"
-                functions = varargin{2};
-            case "encoding"
-                encoding = varargin{2};
-            case "save"
-                save = varargin{2};
-            case "split"
-                split = varargin{2};
-            case "seeds"
-                seeds = varargin{2};
-            case "network"
-                networks = varargin{2};
-            case "cnn"
-                cnn = varargin{2};
-            case "delay"
-                delays = varargin{2};
-            case "test"
-                test = varargin{2};
-            otherwise
-                error(['Unexpected Argument: ' varargin{1}]);
-        end
-        varargin(1:2) = [];
-    end
+  % Clear Console
+  clc;
+
+  % Debug
+  disp("Global Parameters: ");
+  disp(" => Train-Test split: " + (split * 100) + "/" + ((1 - split) * 100));
+  disp(" => Seed: " + seed);
+  disp(" => Encoding: " +  encoding);
+  disp(" => Train: " + train);
+  disp(" => Class: " + class);
+
+  disp("Loading Dataset: " + patient);
+ 
+  % Load Dataset
+  [P, T] = load_data(patient);
+
+  % Split && Encode Dataset
+  [X_train, X_test, y_train, y_test] = train_test_split(P, T, split, encoding, train);
+   
+  % Prepare data for CNN insertion (if it is a deep neural network)
+  %[X_train, X_test, y_train, y_test] = transform(network, X_train, X_test, y_train, y_test);
+
+  % Network Name/ID
+  [~, pname, ~] = fileparts(patient);
+  if network == "layrecnet"
+      ID = pname + "_" + regexprep(num2str(encoding), " +", "-") + "_"+ fn + "_" + hidden + "_" + delay + "_" + seed;
+  elseif network == "feedforwardnet"
+      ID = pname + "_" + regexprep(num2str(encoding), " +", "-") + "_"+ fn + "_" + hidden + "_" + seed;
+  elseif network == "cnn"
+      ID = "CNN_lolxD";
+  else 
+      ID = "Lstm_lolxD";
+  end
   
+  % Set Seed
+  rng(seed);
+  
+  % Train Networks
+  if train == true
 
-    for file = datasets
-      % Load Dataset
-      [P, T] = load_data(file);
+    % Debug
+    disp("Training Network: "+ ID);
 
-      % Split Dataset
-      [X_train, X_test, y_train, y_test] = train_test_split(P, T, "split", split, "encoding", encoding);
-       
-      % Train Networks
-      if isempty(test)
-          if cnn == true
-              % Train Convolutional Neural Networks
-              NN = cnn(X_train, y_train, networks, functions, hidden, delays);
-          else
-              % Train Multi Layer Neural Networks
-              NN = mlnn(X_train, y_train, networks, functions, hidden, delays, "save", save, "seeds", seeds);
-          end
-      else
-          NN = test;
-      end
-      
-      % Test Networks && Gather Relevant Information
-      evaluate(NN, X_test, y_test);
+    if network == "cnn" || network == "lstm"
+        % Train Convolutional Neural Networks
+        NN = cnn(X_train, y_train, network);
+    else
+        % Train Multi Layer Neural Networks
+        NN = mlnn(X_train, y_train, network, fn, hidden, delay);
     end
+
+    % Save Trained Neural Network
+
+    % Create a directory for network storage
+    root = fullfile("..", "data", "networks");
+    if ~exist(root, 'dir')
+        mkdir(root);
+    end
+
+    % Save Network
+    save(fullfile(root, ID), "NN");
+
+  else
+      % Fetch Previously Trained Network
+      NN = load(fullfile("..", "data", "networks", ID)).NN;
+  end
+  
+  % Debug
+  disp("Testing Network: "+ ID);
+
+  % Gather Relevant Information (Train Data)
+  [SP_train, SS_train, A_train, MSE_train] = evaluate(NN, X_train, y_train, class);
+
+  % Debug
+  disp(" => Train Data");
+  disp("  => Performance (MSE) :" + MSE_train);
+  disp("  => Accuracy: " + A_train);
+  disp("  => Sensitivity: " + SS_train);
+  disp("  => Specificity: " + SP_train);
+
+  % Gather Relevant Information (Test Data)
+  [SP_test, SS_test, A_test, MSE_test] = evaluate(NN, X_test, y_test, class);
+  
+  % Debug
+  disp(" => Test Data");
+  disp("  => Performance (MSE) :" + MSE_test);
+  disp("  => Accuracy: " + A_test);
+  disp("  => Sensitivity: " + SS_test);
+  disp("  => Specificity: " + SP_test);
 end
 
 
-function evaluate(N, X, T)
+function [SP, SS, A, MSE] = evaluate(net, X, T, class)
 
-    for i = 1:size(N, 1)
-        % Load network (from file path/cell array)
-        if iscell(N(i))
-            net = N{i, 1};
-            name = N{i, 2};
-        else
-            S =  load(N(i));
-            net = S.NN;
-            name = N(i);
-        end
-
-        % Test the network
-        disp("Testing Network: "+ name);
-        Y = net(X, 'UseParallel','yes','UseGPU','yes');
-    
-        % Evaluate Acording to performance metrics
-        p = perform(net, Y, T);
-        [c, cm, ~ , perf] = confusion(T, Y); 
-
-        % Debug
-        disp(" => Performance (MSE) :" + p);
-        disp(" => Confusion Matrix"); disp(cm);
-        disp(" => Accuracy: " + (1 - c));
-        disp(" => Sensitivity: "); disp(perf(:, 3));
-        disp(" => Specificity: "); disp(perf(:, 4));
-    end       
-end
-
-function [X_train, X_test, y_train, y_test] = train_test_split(P, T, varargin)
-    % Default Parameters
-    split = 0.7; % (70% training / 30% testing)
-    encoding = []; % no encoding
-    
-    % Load Optional Arguments
-    while ~isempty(varargin)
-        switch(lower(varargin{1}))
-            case 'encoding'
-                encoding = varargin{2};
-            case 'split'
-                split = varargin{2};
-            otherwise
-                error(['Unexpected Argument: ' varargin{1}]);
-        end
-        varargin(1:2) = [];
+    % Load Network (from path)
+    if isstring(net)
+        net = load(N, "NN");
     end
 
+    % Test the network
+    Y = net(X, 'UseParallel','yes','UseGPU','yes');
+
+    % Evaluate Acording to performance metrics
+    [c, cm, ~ , ~] = confusion(T, Y); 
+
+    % Calulate Accuracy and Performance
+    MSE = perform(net, Y, T);
+    A = 1 - c;
+     
+    % Auxiliary Vector for matrix cell selection
+    X = 1:3;
+    X(class) = [];
+
+    % Confusion Matrix (True/False - Positives/Negatives)
+    TP = cm(class, class);
+    TN = sum(cm(X, X));
+    FP = sum(cm(X, class));
+    FN = sum(cm(class, X));
+
+    % Calculate Sensitivity && Specificity
+    SS = TP / (TP + FN);
+    SP = TN / (TN + FP);
+end       
+
+function [X_train, X_test, y_train, y_test] = train_test_split(P, T, split, encoding, train)
     % Split Index
     s = floor(length(P) * split);
 
@@ -138,7 +140,7 @@ function [X_train, X_test, y_train, y_test] = train_test_split(P, T, varargin)
     y_train = T(:, 1:s);
   
     % "sub-sampling" (pos/inter)-ictal periods (normalize dataset)
-    A = find(y_train(1, :) == 1); % pos-ictal + inter-ictal
+    A = find(y_train(1, :) == 1);                      % pos-ictal + inter-ictal
     B = find(y_train(2, :) == 1 | y_train(3, :) == 1); % pre-ictal + ictal
 
     S = sort([A(:, randi(length(A), 1, length(B))), B]); % sample
@@ -148,18 +150,51 @@ function [X_train, X_test, y_train, y_test] = train_test_split(P, T, varargin)
     % Setup Test Data
     X_test = P(:, s+1:end);
     y_test = T(:, s+1:end);
-    
-    % Use Autoencoder
-    [X_train, components] = stacked_encoder(X_train, encoding);
-    for encoder = components
-        X_test = encode(encoder{1}, X_test);
-    end   
+       
+    if isempty(encoding)
+        return
+    end
+
+    % Auto Encoder ID
+    ID = regexprep(num2str(encoding), " +", "-");
+    if train == true
+        % Debug
+        disp("Training Encoder...");
+
+        % Train Auto Encoders
+        [X_train, components] = stacked_encoder(X_train, encoding);
+        for encoder = components
+            X_test = encode(encoder{1}, X_test);
+        end 
+
+        % Create a directory for encoder storage
+        root = fullfile("..", "data", "encoders");
+        if ~exist(root, 'dir')
+            mkdir(root);
+        end
+
+        % Save Components
+        save(fullfile(root, ID), "components");
+    else
+        % Debug 
+        disp("Loading Encoder...");
+
+        % Use Previously trained autoencoder
+        components = load(fullfile("..", "data", "encoders", ID)).components;
+        for encoder = components  
+            X_train = encode(encoder{1}, X_train);
+            X_test = encode(encoder{1}, X_test);
+        end  
+    end
+    % Debug
+    disp("Encoding Completed!");
 end
 
+function [Xtr, Xtt, ytr, ytt] = transform(NN, X_train, X_test, y_train, y_test)
+end
 
 function  [P, T] = load_data(file) 
     % Load Dataset
-    disp("Loading Dataset " + file);
     S = load(file);
     disp(S)
 
