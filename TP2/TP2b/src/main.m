@@ -1,55 +1,114 @@
-function main(datasets)
-    
-    % Training Parameters (Hardcoded for now)
-    hidden = [10];
-    functions = ["traingd"];
-    delays = [2];
+% Test Networks: 
+%   main(datasets, "test", ["netfile1", "netfile2"]);
+%
+% Train(+Test) (MLNN Network): 
+%   main(datasets, 
+%       "network", layrecnet",
+%       "cnn", false,
+%       "hidden", 10,
+%       "fn", "traingd",
+%       "delay", 2,
+%       "encoding", [20],
+%       "save", false)
+%
+% Train(+save) (MLNN Network): 
+%   main(datasets, 
+%       "network", "feedforwardnet",
+%       "cnn", false,
+%       "hidden", 10,
+%       "fn", "traingd")
+
+function main(datasets, varargin)
+    % Default Arguments
+    split = 0.7;
+    save = true;
+    seeds = 1;
     encoding = [];
-    network = ["feedforwardnet", "layrecnet"];
+    test = [];
+    delays = [];
+
+    while ~isempty(varargin)
+        switch(lower(varargin{1}))
+            case "hidden"
+                hidden = varargin{2};
+            case "fn"
+                functions = varargin{2};
+            case "encoding"
+                encoding = varargin{2};
+            case "save"
+                save = varargin{2};
+            case "split"
+                split = varargin{2};
+            case "seeds"
+                seeds = varargin{2};
+            case "network"
+                networks = varargin{2};
+            case "cnn"
+                cnn = varargin{2};
+            case "delay"
+                delays = varargin{2};
+            case "test"
+                test = varargin{2};
+            otherwise
+                error(['Unexpected Argument: ' varargin{1}]);
+        end
+        varargin(1:2) = [];
+    end
+  
 
     for file = datasets
       % Load Dataset
       [P, T] = load_data(file);
 
       % Split Dataset
-      [X_train, X_test, y_train, y_test] = train_test_split(P, T, "encoding", encoding);
+      [X_train, X_test, y_train, y_test] = train_test_split(P, T, "split", split, "encoding", encoding);
        
-      % TODO: parametrize.
-      % Train Multi Layer Neural Networks
-      MLNN = mlnn(X_train, y_train, network, functions, hidden, delays);
-
-      % Gather Relevant Information
-      evaluate(MLNN, X_test, y_test);
+      % Train Networks
+      if isempty(test)
+          if cnn == true
+              % Train Convolutional Neural Networks
+              NN = cnn(X_train, y_train, networks, functions, hidden, delays);
+          else
+              % Train Multi Layer Neural Networks
+              NN = mlnn(X_train, y_train, networks, functions, hidden, delays, "save", save, "seeds", seeds);
+          end
+      else
+          NN = test;
+      end
+      
+      % Test Networks && Gather Relevant Information
+      evaluate(NN, X_test, y_test);
     end
 end
 
 
 function evaluate(N, X, T)
 
-    for i = 1:length(N)
+    for i = 1:size(N, 1)
         % Load network (from file path/cell array)
         if iscell(N(i))
             net = N{i, 1};
             name = N{i, 2};
         else
-            net = load(N(i), "net");
+            S =  load(N(i));
+            net = S.NN;
             name = N(i);
         end
-    
+
         % Test the network
         disp("Testing Network: "+ name);
-        Y = net(X);
+        Y = net(X, 'UseParallel','yes','UseGPU','yes');
     
         % Evaluate Acording to performance metrics
         p = perform(net, Y, T);
-        disp(" => Performance (MSE) :" + p);
+        [c, cm, ~ , perf] = confusion(T, Y); 
 
-        disp(" => Confusion Matrix")
-        [missed, cm, ~, ~] = confusion(T, Y);
-        disp(cm);
-        
-        acc = 1 - missed;
-        disp(" => Accuracy: " + acc);
+        % Debug
+        disp(" => Performance (MSE) :" + p);
+        disp(" => Confusion Matrix"); disp(cm);
+        disp(" => Accuracy: " + (1 - c));
+        disp(" => Sensitivity: "); disp(perf(:, 3));
+        disp(" => Specificity: "); disp(perf(:, 4));
     end       
 end
 

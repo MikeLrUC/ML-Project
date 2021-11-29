@@ -43,7 +43,7 @@ function [MLNN] = mlnn(X, T, networks, functions, layers, delays, varargin)
 end
 
 
-function [N, ID] = mlnn_train(X, T, network, fn, hidden, delay, seed, store)
+function [NN, ID] = mlnn_train(X, T, network, fn, hidden, delay, seed, store)
     % Set Seed
     rng(seed);
 
@@ -70,11 +70,11 @@ function [N, ID] = mlnn_train(X, T, network, fn, hidden, delay, seed, store)
        % Train Neural Network
        net = layrecnet(1:delay, hidden, fn);
        [Xs, Xi, Ai, Ts] = preparets(net, X_train, y_train);
-       N = train(net, Xs, Ts, Xi, Ai); 
+       NN = train(net, Xs, Ts, Xi, Ai, 'UseParallel','yes','UseGPU','yes'); 
     else
        % Train Neural Network
        net = feedforwardnet(hidden, fn);
-       N = train(net, X_train, y_train);  
+       NN = train(net, X_train, y_train, 'UseParallel','yes','UseGPU','yes');  
     end
 
     % Save Trained Neural Network
@@ -86,7 +86,7 @@ function [N, ID] = mlnn_train(X, T, network, fn, hidden, delay, seed, store)
        end
 
        % Save Network
-       save(fullfile(root, ID), "net");
+       save(fullfile(root, ID), "NN");
     end
 
 end

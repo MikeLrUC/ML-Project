@@ -132,3 +132,4 @@ dmypy.json
 # Ignore TP2b data files
 /TP2/TP2b/data/*.mat
 /TP2/TP2b/data/networks/*
+/TP2/TP2b/src/*.asv
