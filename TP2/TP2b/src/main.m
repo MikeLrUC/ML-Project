@@ -208,7 +208,7 @@ end
 
 function [Xtr, Xtt, ytr, ytt] = transform(network, X_train, X_test, y_train, y_test)
 
-    function [X_new, y_new] = blocks(X, y, gap)
+    function [X_new, y_new] = blocks(X, y, gap, network)
         i = 1;
         X_new = [];
         y_new = [];
@@ -224,18 +224,24 @@ function [Xtr, Xtt, ytr, ytt] = transform(network, X_train, X_test, y_train, y_t
             end
         end
         
-        % Blocks Reshaping (29x29x1xN_blocks) 
-        X_new = reshape(X_new, [29, 29, 1, length(X_new) / gap]);
+        if network == "cnn"
+            % Blocks Reshaping (29x29x1xN_blocks) 
+            X_new = reshape(X_new, [29, 29, 1, length(X_new) / gap]);
+        elseif network == "lstm"
+            n_blocks = floor(length(X_new) / gap);
+            X_new = mat2cell(X_new', repmat(gap, n_blocks, 1));
+            X_new = cellfun(@transpose, X_new, 'UniformOutput', false);
+        end
         
         y_new = categorical(y_new');
         return
     end
 
+    % Labels decoding
+    [~, y_train] = max(y_train);
+    [~, y_test] = max(y_test); 
+    
     if network == "cnn"
-        % Labels decoding 
-        [~, y_train] = max(y_train);
-        [~, y_test] = max(y_test); 
-        
         % Datapoints normalization
         min_val = min([X_train(:); X_test(:)]);
         max_val = max([X_train(:); X_test(:)]);
@@ -244,17 +250,20 @@ function [Xtr, Xtt, ytr, ytt] = transform(network, X_train, X_test, y_train, y_t
         X_test = (X_test - min_val) ./ max_val;
         
         % Block Building (29x29) 
-        [Xtr, ytr] = blocks(X_train, y_train, 29);
-        [Xtt, ytt] = blocks(X_test, y_test, 29);
+        [Xtr, ytr] = blocks(X_train, y_train, 29, network);
+        [Xtt, ytt] = blocks(X_test, y_test, 29, network);
 
     elseif network == "lstm"
-        
+        % Block Building (29x29) 
+        [Xtr, ytr] = blocks(X_train, y_train, 29, network);
+        [Xtt, ytt] = blocks(X_test, y_test, 29, network);
     else 
        Xtr = X_train;
        Xtt = X_test; 
        ytr = y_train;
        ytt = y_test;
     end
+    disp("oi");
     return 
 end
 
