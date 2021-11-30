@@ -29,7 +29,7 @@ function [SP_train, SS_train, A_train, SP_test, SS_test, A_test] ...
   disp("Loading Dataset: " + patient);
   % Load Dataset
   [P, T] = load_data(patient);
-
+  
   % Split && Encode Dataset
   [X_train, X_test, y_train, y_test] = train_test_split(pname, P, T, split, encoding, train);
    
@@ -75,7 +75,7 @@ function [SP_train, SS_train, A_train, SP_test, SS_test, A_test] ...
     % Save Trained Neural Network
 
     % Create a directory for network storage
-    root = fullfile("..", "data", "networks");
+    root = fullfile("data", "networks");
     if ~exist(root, 'dir')
         mkdir(root);
     end
@@ -85,7 +85,7 @@ function [SP_train, SS_train, A_train, SP_test, SS_test, A_test] ...
 
   else
       % Fetch Previously Trained Network
-      NN = load(fullfile("..", "data", "networks", ID)).NN;
+      NN = load(fullfile("data", "networks", ID)).NN;
   end
   
   % Debug
@@ -195,7 +195,7 @@ function [X_train, X_test, y_train, y_test] = train_test_split(patient, P, T, sp
         end 
 
         % Create a directory for encoder storage
-        root = fullfile("..", "data", "encoders");
+        root = fullfile("data", "encoders");
         if ~exist(root, 'dir')
             mkdir(root);
         end
@@ -207,12 +207,14 @@ function [X_train, X_test, y_train, y_test] = train_test_split(patient, P, T, sp
         disp("Loading Encoder...");
 
         % Use Previously trained autoencoder
-        components = load(fullfile("..", "data", "encoders", ID)).components;
+        components = load(fullfile("data", "encoders", ID)).components;
         for encoder = components  
             X_train = encode(encoder{1}, X_train);
             X_test = encode(encoder{1}, X_test);
         end  
     end
+    
+    
     % Debug
     disp("Encoding Completed!");
 end
@@ -248,11 +250,14 @@ function [Xtr, Xtt, ytr, ytt] = transform(network, X_train, X_test, y_train, y_t
         return
     end
 
-    % Labels decoding
-    [~, y_train] = max(y_train);
-    [~, y_test] = max(y_test); 
+ 
     
     if network == "cnn"
+        
+        % Labels decoding
+        [~, y_train] = max(y_train);
+        [~, y_test] = max(y_test);
+        
         % Datapoints normalization
         min_val = min([X_train(:); X_test(:)]);
         max_val = max([X_train(:); X_test(:)]);
@@ -265,6 +270,11 @@ function [Xtr, Xtt, ytr, ytt] = transform(network, X_train, X_test, y_train, y_t
         [Xtt, ytt] = blocks(X_test, y_test, 29, network);
 
     elseif network == "lstm"
+        
+        % Labels decoding
+        [~, y_train] = max(y_train);
+        [~, y_test] = max(y_test);
+        
         % Block Building (29x29) 
         [Xtr, ytr] = blocks(X_train, y_train, 29, network);
         [Xtt, ytt] = blocks(X_test, y_test, 29, network);
