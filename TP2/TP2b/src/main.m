@@ -6,7 +6,7 @@ function [SP_train, SS_train, A_train, SP_test, SS_test, A_test] ...
   fn = "traingd";       % Network Training Function;
   delay = 2;            % Delay (for layrecnet)
   hidden = 10;          % Hidden Layer Size
-
+    
   % Clear Console
   clc;
 
@@ -27,23 +27,24 @@ function [SP_train, SS_train, A_train, SP_test, SS_test, A_test] ...
   disp(" => Class: " + class);
 
   disp("Loading Dataset: " + patient);
- 
   % Load Dataset
   [P, T] = load_data(patient);
 
   % Split && Encode Dataset
-  [X_train, X_test, y_train, y_test] = train_test_split(P, T, split, encoding, train);
+  [X_train, X_test, y_train, y_test] = train_test_split(pname, P, T, split, encoding, train);
    
   % Prepare data for CNN insertion (if it is a deep neural network)
   [X_train, X_test, y_train, y_test] = transform(network, X_train, X_test, y_train, y_test);
 
   % Network Name/ID
   if network == "layrecnet"
-      ID = pname + "_" + regexprep(num2str(encoding), " +", "-") + "_"+ fn + "_" + hidden + "_" + delay + "_" + seed;
+      ID = pname + "_" + regexprep(num2str(encoding), " +", "-") + "_" + fn + "_" + hidden + "_" + delay + "_" + seed;
   elseif network == "feedforwardnet"
-      ID = pname + "_" + regexprep(num2str(encoding), " +", "-") + "_"+ fn + "_" + hidden + "_" + seed;
-  else 
+      ID = pname + "_" + regexprep(num2str(encoding), " +", "-") + "_" + fn + "_" + hidden + "_" + seed;
+  elseif network == "cnn"
       ID = pname + "_" + network + "_" + seed;
+  elseif network == "lstm"
+      ID = pname + "_" + regexprep(num2str(encoding), " +", "-") + "_" + network + "_" + seed;
   end
   
   % Set Seed
@@ -60,7 +61,12 @@ function [SP_train, SS_train, A_train, SP_test, SS_test, A_test] ...
         NN = cnn(X_train, X_test, y_train, y_test, network);
     elseif network == "lstm"
         % Train Long Short Term Network
-        NN = lstm(X_train, X_test, y_train, y_test, network);
+        if isempty(encoding)
+            n_features = 29;
+        else
+            n_features = encoding(end);
+        end
+        NN = lstm_nn(n_features, X_train, X_test, y_train, y_test, network);
     else
         % Train Multi Layer Neural Networks
         NN = mlnn(X_train, y_train, network, fn, hidden, delay);
@@ -122,6 +128,11 @@ function [SP, SS, A] = evaluate(network, net, X, T, class)
         T = I(:, T');     
     elseif network == "lstm"
         Y = classify(net, X, 'MiniBatchSize', 27, 'SequenceLength','longest');
+        
+        % Treat Data
+        I = eye(3);
+        Y = I(:, Y');  
+        T = I(:, T');  
     else
         Y = net(X, 'UseParallel','yes','UseGPU','yes');
     end
@@ -147,7 +158,7 @@ function [SP, SS, A] = evaluate(network, net, X, T, class)
     SP = TN / (TN + FP);
 end       
 
-function [X_train, X_test, y_train, y_test] = train_test_split(P, T, split, encoding, train)
+function [X_train, X_test, y_train, y_test] = train_test_split(patient, P, T, split, encoding, train)
     % Split Index
     s = floor(length(P) * split);
 
@@ -172,7 +183,7 @@ function [X_train, X_test, y_train, y_test] = train_test_split(P, T, split, enco
     end
 
     % Auto Encoder ID
-    ID = regexprep(num2str(encoding), " +", "-");
+    ID = patient + "_" + regexprep(num2str(encoding), " +", "-");
     if train == true
         % Debug
         disp("Training Encoder...");
@@ -263,7 +274,6 @@ function [Xtr, Xtt, ytr, ytt] = transform(network, X_train, X_test, y_train, y_t
        ytr = y_train;
        ytt = y_test;
     end
-    disp("oi");
     return 
 end
 
