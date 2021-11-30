@@ -2,7 +2,6 @@ function [SP_train, SS_train, A_train, SP_test, SS_test, A_test] ...
             = main(patient, network, encoding, train, class)
 
   % Default Parameters
- 
   seed = 42;            % seed for training/testing network (easter-egg)
   fn = "traingd";       % Network Training Function;
   delay = 2;            % Delay (for layrecnet)
@@ -43,8 +42,6 @@ function [SP_train, SS_train, A_train, SP_test, SS_test, A_test] ...
       ID = pname + "_" + regexprep(num2str(encoding), " +", "-") + "_"+ fn + "_" + hidden + "_" + delay + "_" + seed;
   elseif network == "feedforwardnet"
       ID = pname + "_" + regexprep(num2str(encoding), " +", "-") + "_"+ fn + "_" + hidden + "_" + seed;
-  elseif network == "cnn"
-      ID = pname + "_" + network + "_"+ seed;
   else 
       ID = pname + "_" + network + "_" + seed;
   end
@@ -62,7 +59,8 @@ function [SP_train, SS_train, A_train, SP_test, SS_test, A_test] ...
         % Train Convolutional Neural Networks
         NN = cnn(X_train, X_test, y_train, y_test, network);
     elseif network == "lstm"
-        NN = true;
+        % Train Long Short Term Network
+        NN = lstm(X_train, X_test, y_train, y_test, network);
     else
         % Train Multi Layer Neural Networks
         NN = mlnn(X_train, y_train, network, fn, hidden, delay);
@@ -122,6 +120,8 @@ function [SP, SS, A] = evaluate(network, net, X, T, class)
         I = eye(3);
         Y = I(:, Y');  
         T = I(:, T');     
+    elseif network == "lstm"
+        Y = classify(net, X, 'MiniBatchSize', 27, 'SequenceLength','longest');
     else
         Y = net(X, 'UseParallel','yes','UseGPU','yes');
     end
