@@ -199,7 +199,7 @@ function [Xtr, Xtt, ytr, ytt] = transform(network, X_train, X_test, y_train, y_t
         while i <= length(X) - gap + 1
             dif = y(i : i + gap - 1) ~= y(i);
             if sum(dif) == 0                            % If the window has the same labels
-                X_new = [X_new, X(:, i : i + gap - 1)];
+                X_new = [X_new, X(i : i + gap - 1)];
                 y_new = [y_new, y(i)];
                 i = i + gap;
             else                                        % Otherwise
@@ -210,9 +210,6 @@ function [Xtr, Xtt, ytr, ytt] = transform(network, X_train, X_test, y_train, y_t
         % Labels encoding
         identity = eye(3);
         y_new = categorical(identity(:, y_new));
-        
-        % Blocks Reshaping (29x29x1xN_blocks) 
-        X_new = reshape(X_new, [29, 29, 1, length(X_new) / gap]);
         return
     end
 
@@ -220,6 +217,8 @@ function [Xtr, Xtt, ytr, ytt] = transform(network, X_train, X_test, y_train, y_t
         % Labels decoding 
         [~, y_train] = max(y_train);
         [~, y_test] = max(y_test); 
+        
+        %%% Datapoints Pre-Processing %%%
         
         % Datapoints normalization
         min_val = min([X_train(:); X_test(:)]);
@@ -231,7 +230,7 @@ function [Xtr, Xtt, ytr, ytt] = transform(network, X_train, X_test, y_train, y_t
         % Block Building (29x29) 
         [Xtr, ytr] = blocks(X_train, y_train, 29);
         [Xtt, ytt] = blocks(X_test, y_test, 29);
-
+        
     elseif network == "lstm"
         
     else 
