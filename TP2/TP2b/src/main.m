@@ -27,7 +27,7 @@ function [SP_train, SS_train, A_train, MSE_train, SP_test, SS_test, A_test, MSE_
   [X_train, X_test, y_train, y_test] = train_test_split(P, T, split, encoding, train);
    
   % Prepare data for CNN insertion (if it is a deep neural network)
-  %[X_train, X_test, y_train, y_test] = transform(network, X_train, X_test, y_train, y_test);
+  [X_train, X_test, y_train, y_test] = transform(network, X_train, X_test, y_train, y_test);
 
   % Network Name/ID
   [~, pname, ~] = fileparts(patient);
@@ -36,7 +36,7 @@ function [SP_train, SS_train, A_train, MSE_train, SP_test, SS_test, A_test, MSE_
   elseif network == "feedforwardnet"
       ID = pname + "_" + regexprep(num2str(encoding), " +", "-") + "_"+ fn + "_" + hidden + "_" + seed;
   elseif network == "cnn"
-      ID = "CNN_lolxD";
+      ID = pname + "_" + seed;
   else 
       ID = "Lstm_lolxD";
   end
@@ -52,7 +52,7 @@ function [SP_train, SS_train, A_train, MSE_train, SP_test, SS_test, A_test, MSE_
 
     if network == "cnn" || network == "lstm"
         % Train Convolutional Neural Networks
-        NN = cnn(X_train, y_train, network);
+        NN = cnn(X_train, X_test, y_train, y_test, network);
     else
         % Train Multi Layer Neural Networks
         NN = mlnn(X_train, y_train, network, fn, hidden, delay);
@@ -209,7 +209,7 @@ function [Xtr, Xtt, ytr, ytt] = transform(network, X_train, X_test, y_train, y_t
         end
         % Labels encoding
         identity = eye(3);
-        y_new = categorical(identity(:, y_new));
+        y_new = categorical(identity(:, y_new)');
         
         % Blocks Reshaping (29x29x1xN_blocks) 
         X_new = reshape(X_new, [29, 29, 1, length(X_new) / gap]);
