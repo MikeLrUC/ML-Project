@@ -1,7 +1,8 @@
-function [SP_train, SS_train, A_train, MSE_train, SP_test, SS_test, A_test, MSE_test] = main(patient, network, encoding, train, class)
+function [SP_train, SS_train, A_train, SP_test, SS_test, A_test] ...
+            = main(patient, network, encoding, train, class)
 
   % Default Parameters
-  split = 0.7;          % (70% training / 30% testing)
+ 
   seed = 42;            % seed for training/testing network (easter-egg)
   fn = "traingd";       % Network Training Function;
   delay = 2;            % Delay (for layrecnet)
@@ -9,6 +10,14 @@ function [SP_train, SS_train, A_train, MSE_train, SP_test, SS_test, A_test, MSE_
 
   % Clear Console
   clc;
+
+  % Normalize Dataset
+  [~, pname, ~] = fileparts(patient);
+  if pname == "112502" % (35% training / 65% testing)
+    split = 0.35; 
+  else
+    split = 0.7;       % (70% training / 30% testing)
+  end
 
   % Debug
   disp("Global Parameters: ");
@@ -30,15 +39,14 @@ function [SP_train, SS_train, A_train, MSE_train, SP_test, SS_test, A_test, MSE_
   [X_train, X_test, y_train, y_test] = transform(network, X_train, X_test, y_train, y_test);
 
   % Network Name/ID
-  [~, pname, ~] = fileparts(patient);
   if network == "layrecnet"
       ID = pname + "_" + regexprep(num2str(encoding), " +", "-") + "_"+ fn + "_" + hidden + "_" + delay + "_" + seed;
   elseif network == "feedforwardnet"
       ID = pname + "_" + regexprep(num2str(encoding), " +", "-") + "_"+ fn + "_" + hidden + "_" + seed;
   elseif network == "cnn"
-      ID = pname + "_" + seed;
+      ID = pname + "_" + network + "_"+ seed;
   else 
-      ID = "Lstm_lolxD";
+      ID = pname + "_" + network + "_" + seed;
   end
   
   % Set Seed
@@ -50,9 +58,11 @@ function [SP_train, SS_train, A_train, MSE_train, SP_test, SS_test, A_test, MSE_
     % Debug
     disp("Training Network: "+ ID);
 
-    if network == "cnn" || network == "lstm"
+    if network == "cnn"
         % Train Convolutional Neural Networks
         NN = cnn(X_train, X_test, y_train, y_test, network);
+    elseif network == "lstm"
+        NN = true;
     else
         % Train Multi Layer Neural Networks
         NN = mlnn(X_train, y_train, network, fn, hidden, delay);
@@ -78,28 +88,26 @@ function [SP_train, SS_train, A_train, MSE_train, SP_test, SS_test, A_test, MSE_
   disp("Testing Network: "+ ID);
 
   % Gather Relevant Information (Train Data)
-  [SP_train, SS_train, A_train, MSE_train] = evaluate(NN, X_train, y_train, class);
+  [SP_train, SS_train, A_train] = evaluate(network, NN, X_train, y_train, class);
 
   % Debug
   disp(" => Train Data");
-  disp("  => Performance (MSE) :" + MSE_train);
   disp("  => Accuracy: " + A_train);
   disp("  => Sensitivity: " + SS_train);
   disp("  => Specificity: " + SP_train);
 
   % Gather Relevant Information (Test Data)
-  [SP_test, SS_test, A_test, MSE_test] = evaluate(NN, X_test, y_test, class);
+  [SP_test, SS_test, A_test] = evaluate(network, NN, X_test, y_test, class);
   
   % Debug
   disp(" => Test Data");
-  disp("  => Performance (MSE) :" + MSE_test);
   disp("  => Accuracy: " + A_test);
   disp("  => Sensitivity: " + SS_test);
   disp("  => Specificity: " + SP_test);
 end
 
 
-function [SP, SS, A, MSE] = evaluate(net, X, T, class)
+function [SP, SS, A] = evaluate(network, net, X, T, class)
 
     % Load Network (from path)
     if isstring(net)
@@ -107,13 +115,21 @@ function [SP, SS, A, MSE] = evaluate(net, X, T, class)
     end
 
     % Test the network
-    Y = net(X, 'UseParallel','yes','UseGPU','yes');
+    if network == "cnn"
+        Y = classify(net, X);
+
+        % Treat Data
+        I = eye(3);
+        Y = I(:, Y');  
+        T = I(:, T');     
+    else
+        Y = net(X, 'UseParallel','yes','UseGPU','yes');
+    end
 
     % Evaluate Acording to performance metrics
     [c, cm, ~ , ~] = confusion(T, Y); 
 
-    % Calulate Accuracy and Performance
-    MSE = perform(net, Y, T);
+    % Calculate Accuracy
     A = 1 - c;
      
     % Auxiliary Vector for matrix cell selection
@@ -121,10 +137,10 @@ function [SP, SS, A, MSE] = evaluate(net, X, T, class)
     X(class) = [];
 
     % Confusion Matrix (True/False - Positives/Negatives)
-    TP = cm(class, class);
-    TN = sum(cm(X, X));
-    FP = sum(cm(X, class));
-    FN = sum(cm(class, X));
+    TP = sum(cm(class, class), 'all');
+    TN = sum(cm(X, X), 'all');
+    FP = sum(cm(X, class), 'all');
+    FN = sum(cm(class, X), 'all');
 
     % Calculate Sensitivity && Specificity
     SS = TP / (TP + FN);
