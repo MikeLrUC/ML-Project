@@ -25,7 +25,7 @@ function [NN] = cnn(X_train, X_test, y_train, y_test, network)
             
              fullyConnectedLayer(3)
              softmaxLayer
-            classificationLayer
+             classificationLayer
          ];
        
          options = trainingOptions('sgdm', ...
@@ -38,7 +38,9 @@ function [NN] = cnn(X_train, X_test, y_train, y_test, network)
                 'Plots','training-progress');
 
          NN = trainNetwork(X_train, y_train, layers, options);
+         % Agora para classificar faz-se classify(NN, X_test) e não NN(X_test)
     else
          
     end
+    
 end

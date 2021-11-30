@@ -207,12 +207,11 @@ function [Xtr, Xtt, ytr, ytt] = transform(network, X_train, X_test, y_train, y_t
                 i = i + nexti - 1;
             end
         end
-        % Labels encoding
-        identity = eye(3);
-        y_new = categorical(identity(:, y_new)');
         
         % Blocks Reshaping (29x29x1xN_blocks) 
         X_new = reshape(X_new, [29, 29, 1, length(X_new) / gap]);
+        
+        y_new = categorical(y_new');
         return
     end
 
