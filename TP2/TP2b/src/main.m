@@ -1,5 +1,5 @@
 function [SP_train, SS_train, A_train, SP_test, SS_test, A_test] ...
-            = main(patient, network, encoding, train, class)
+            = main(patient, network, encoding, train, class, postprocessing)
 
   % Default Parameters
   seed = 42;            % seed for training/testing network (easter-egg)
@@ -92,7 +92,7 @@ function [SP_train, SS_train, A_train, SP_test, SS_test, A_test] ...
   disp("Testing Network: "+ ID);
 
   % Gather Relevant Information (Train Data)
-  [SP_train, SS_train, A_train] = evaluate(network, NN, X_train, y_train, class);
+  [SP_train, SS_train, A_train] = evaluate(network, NN, X_train, y_train, class, postprocessing);
 
   % Debug
   disp(" => Train Data");
@@ -101,7 +101,7 @@ function [SP_train, SS_train, A_train, SP_test, SS_test, A_test] ...
   disp("  => Specificity: " + SP_train);
 
   % Gather Relevant Information (Test Data)
-  [SP_test, SS_test, A_test] = evaluate(network, NN, X_test, y_test, class);
+  [SP_test, SS_test, A_test] = evaluate(network, NN, X_test, y_test, class, postprocessing);
   
   % Debug
   disp(" => Test Data");
@@ -111,7 +111,26 @@ function [SP_train, SS_train, A_train, SP_test, SS_test, A_test] ...
 end
 
 
-function [SP, SS, A] = evaluate(network, net, X, T, class)
+function [SP, SS, A] = evaluate(network, net, X, T, class, postprocessing)
+
+    function [Y_new] = postproc(Y, window, threshold)
+        % Categorize
+        [~, Y_new] = max(Y);
+        
+        % Flip 
+        for i = 1 : window : length(Y_new) - window
+            [count, ~] = groupcounts(Y_new(i : i + window - 1)');
+            greatest = find(count > threshold);
+            if ~isempty(greatest)
+                Y_new(i : i + window -1) = greatest;
+            end
+        end
+        
+        % OneHot Encode
+        identity = eye(3);
+        Y_new = identity(:, Y_new);
+        return
+    end
 
     % Load Network (from path)
     if isstring(net)
@@ -136,7 +155,11 @@ function [SP, SS, A] = evaluate(network, net, X, T, class)
     else
         Y = net(X, 'UseParallel','yes','UseGPU','yes');
     end
-
+    
+    if postprocessing 
+       Y = postproc(Y, 10, 5);
+    end
+    
     % Evaluate Acording to performance metrics
     [c, cm, ~ , ~] = confusion(T, Y); 
 
