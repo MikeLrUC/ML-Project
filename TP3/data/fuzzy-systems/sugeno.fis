@@ -1,0 +1,55 @@
+[System]
+Name='sugeno'
+Type='sugeno'
+Version=2.0
+NumInputs=3
+NumOutputs=1
+NumRules=0
+AndMethod='prod'
+OrMethod='probor'
+ImpMethod='prod'
+AggMethod='sum'
+DefuzzMethod='wtaver'
+
+[Input1]
+Name='red-channel'
+Range=[0 1]
+NumMFs=5
+MF1='low':'trimf',[-0.25 0 0.25]
+MF2='low-medium':'trimf',[0 0.25 0.5]
+MF3='medium':'trimf',[0.25 0.5 0.75]
+MF4='medium-high':'trimf',[0.5 0.75 1]
+MF5='high':'trimf',[0.75 1 1.25]
+
+[Input2]
+Name='green-channel'
+Range=[0 1]
+NumMFs=5
+MF1='low':'trimf',[-0.25 0 0.25]
+MF2='low-medium':'trimf',[0 0.25 0.5]
+MF3='medium':'trimf',[0.25 0.5 0.75]
+MF4='medium-high':'trimf',[0.5 0.75 1]
+MF5='high':'trimf',[0.75 1 1.25]
+
+[Input3]
+Name='blue-channel'
+Range=[0 1]
+NumMFs=5
+MF1='low':'trimf',[-0.25 0 0.25]
+MF2='low-medium':'trimf',[0 0.25 0.5]
+MF3='medium':'trimf',[0.25 0.5 0.75]
+MF4='medium-high':'trimf',[0.5 0.75 1]
+MF5='high':'trimf',[0.75 1 1.25]
+
+[Output1]
+Name='output1'
+Range=[0 1]
+NumMFs=6
+MF1='green':'constant',[1]
+MF2='breaker':'constant',[2]
+MF3='tourning':'constant',[3]
+MF4='pink':'constant',[4]
+MF5='light-red':'constant',[5]
+MF6='red':'constant',[6]
+
+[Rules]

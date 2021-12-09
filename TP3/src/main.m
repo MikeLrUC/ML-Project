@@ -1,15 +1,16 @@
-function main()
+function accuracy = main()
     root = "data";
     processed = "processed";
     method = "rgb_average";
     ratio = 0.7;
+    fis_name = "mamdani";
     try
         disp("Trying to Load Processed Data")
         % Load Saved Processed Data
-        X_train = load(fullfile(root, processed, "X_train"));
-        y_train = load(fullfile(root, processed, "y_train"));
-        X_test = load(fullfile(root, processed, "X_test"));
-        y_test = load(fullfile(root, processed, "y_test"));
+        X_train = load(fullfile(root, processed, "X_train")).X_train;
+        y_train = load(fullfile(root, processed, "y_train")).y_train;
+        X_test = load(fullfile(root, processed, "X_test")).X_test;
+        y_test = load(fullfile(root, processed, "y_test")).y_test;
     catch
         disp("Not Found: Processing data...")
         % Load and Transform Data
@@ -31,7 +32,7 @@ function main()
     disp("Done!")
     
     % Fuzzy Inference System
-    disp("Model")
+    accuracy = my_fuzzy(root, fis_name, X_train, y_train, X_test, y_test);
 end
 
 
