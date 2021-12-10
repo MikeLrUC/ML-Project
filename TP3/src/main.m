@@ -3,14 +3,15 @@ function accuracy = main()
     processed = "processed";
     method = "rgb_average";
     ratio = 0.7;
-    fis_name = "mamdani";
+    fis_name = "sugeno_3";
+    n_rules = 25;
     try
         disp("Trying to Load Processed Data")
         % Load Saved Processed Data
-        X_train = load(fullfile(root, processed, "X_train")).X_train;
-        y_train = load(fullfile(root, processed, "y_train")).y_train;
-        X_test = load(fullfile(root, processed, "X_test")).X_test;
-        y_test = load(fullfile(root, processed, "y_test")).y_test;
+        X_train = load(fullfile(root, processed, "X_train_" + method)).X_train;
+        y_train = load(fullfile(root, processed, "y_train_" + method)).y_train;
+        X_test = load(fullfile(root, processed, "X_test_" + method)).X_test;
+        y_test = load(fullfile(root, processed, "y_test_" + method)).y_test;
     catch
         disp("Not Found: Processing data...")
         % Load and Transform Data
@@ -24,15 +25,15 @@ function accuracy = main()
         end
 
         % Save Network
-        save(fullfile(root, processed, "X_train"), "X_train");
-        save(fullfile(root, processed, "y_train"), "y_train");
-        save(fullfile(root, processed, "X_test"), "X_test");
-        save(fullfile(root, processed, "y_test"), "y_test");
+        save(fullfile(root, processed, "X_train_" + method), "X_train");
+        save(fullfile(root, processed, "y_train_" + method), "y_train");
+        save(fullfile(root, processed, "X_test_" + method), "X_test");
+        save(fullfile(root, processed, "y_test_" + method), "y_test");
     end
     disp("Done!")
     
     % Fuzzy Inference System
-    accuracy = my_fuzzy(root, fis_name, X_train, y_train, X_test, y_test);
+    accuracy = my_fuzzy(root, fis_name, n_rules, X_train, y_train, X_test, y_test);
 end
 
 

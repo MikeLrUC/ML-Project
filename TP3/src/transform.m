@@ -31,3 +31,9 @@ function values = rgb_average(image)
     
     values = [r; g; b];
 end
+
+
+function values = grayscale_average(image)
+    values = rgb_average(image);
+    values = 0.2989 * values(1) + 0.5870 * values(2) + 0.1140 * values(3);
+end

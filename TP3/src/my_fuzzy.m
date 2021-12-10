@@ -1,12 +1,11 @@
-function accuracy = my_fuzzy(root, fis_name, X_train, y_train, X_test, y_test)
+function accuracy = my_fuzzy(root, fis_name, n_rules, X_train, y_train, X_test, y_test)
     fis = readfis(fullfile(root, "fuzzy-systems", fis_name + ".fis"));
-    [inputs, outputs, rules] = getTunableSettings(fis);
+    [inputs, ~, rules] = getTunableSettings(fis);
     
     opts = tunefisOptions();
-    opts.ValidationWindowSize = 2;
-    opts.ValidationTolerance = 0.05;
-    opts.MethodOptions.MaxGenerations = 10;
-    opts.NumMaxRules = 25;
+    opts.UseParallel = true;
+    opts.MethodOptions.MaxGenerations = 50;
+    opts.NumMaxRules = n_rules;
     opts.OptimizationType = 'learning';
     
     tuned_fis = tunefis(fis, [inputs; []; rules], X_train, y_train, opts);

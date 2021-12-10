@@ -1,0 +1,35 @@
+[System]
+Name='mamdani_1'
+Type='mamdani'
+Version=2.0
+NumInputs=1
+NumOutputs=1
+NumRules=0
+AndMethod='min'
+OrMethod='max'
+ImpMethod='min'
+AggMethod='max'
+DefuzzMethod='centroid'
+
+[Input1]
+Name='gray-channel'
+Range=[0 1]
+NumMFs=5
+MF1='low':'trimf',[-0.25 0 0.25]
+MF2='low-medium':'trimf',[0 0.25 0.5]
+MF3='medium':'trimf',[0.25 0.5 0.75]
+MF4='medium-high':'trimf',[0.5 0.75 1]
+MF5='high':'trimf',[0.75 1 1.25]
+
+[Output1]
+Name='output1'
+Range=[0 7]
+NumMFs=6
+MF1='green':'trimf',[0 1 2]
+MF2='breaker':'trimf',[1 2 3]
+MF3='tourning':'trimf',[2 3 4]
+MF4='pink':'trimf',[3 4 5]
+MF5='light-red':'trimf',[4 5 6]
+MF6='red':'trimf',[5 6 7]
+
+[Rules]
