@@ -1,10 +1,12 @@
-function accuracy = main()
-    root = "data";
+function [total_acc, class_accs] = main(root, method, ratio, fis_name, n_rules)
     processed = "processed";
-    method = "rgb_average";
-    ratio = 0.7;
-    fis_name = "sugeno_3";
-    n_rules = 25;
+    
+    if method == "rgb_average"
+        fis_name = fis_name + "_3";
+    elseif method == "grayscale_average"
+        fis_name = fis_name + "_1";
+    end
+    
     try
         disp("Trying to Load Processed Data")
         % Load Saved Processed Data
@@ -33,7 +35,7 @@ function accuracy = main()
     disp("Done!")
     
     % Fuzzy Inference System
-    accuracy = my_fuzzy(root, fis_name, n_rules, X_train, y_train, X_test, y_test);
+    [total_acc, class_accs] = my_fuzzy(root, fis_name, n_rules, X_train, y_train, X_test, y_test);
 end
 
 
